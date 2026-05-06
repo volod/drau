@@ -93,9 +93,8 @@ def run(
                 warning = None
                 if distance > reliable_range:
                     warning = (
-                        f"⚠ beyond reliable range "
-                        f"(≤ {reliable_range:.0f} m) "
-                        f"— volume at minimum"
+                        f"⚠ beyond microphone range "
+                        f"(≤ {reliable_range:.0f} m)"
                     )
 
                 console.clear()

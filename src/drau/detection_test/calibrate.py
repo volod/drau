@@ -55,7 +55,7 @@ class Calibration:
 
     def gain_for_distance(self, distance_m: float) -> float:
         amplitude = self.ref_scale / max(float(distance_m), 1.0)
-        return float(np.clip(amplitude, MIN_PLAYBACK_GAIN, 1.0))
+        return float(np.clip(amplitude, 0.0, 1.0))
 
 
 def calibrate(console: Console) -> Calibration:

@@ -46,7 +46,7 @@ def show_sample(
 
 def _warning_text(distance_m: float, max_reliable: float) -> str | None:
     if distance_m > max_reliable:
-        return f"⚠ beyond reliable range (≤ {max_reliable:.0f} m) — volume at minimum"
+        return f"⚠ beyond microphone range (≤ {max_reliable:.0f} m)"
     return None
 
 

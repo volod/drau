@@ -39,14 +39,14 @@ def play_at_distance(audio: np.ndarray, sr: int, distance_m: float, calibration)
     """Normalise audio and play at volume simulating a drone at distance_m.
 
     Returns True when the raw inverse-distance gain fell below MIN_PLAYBACK_GAIN
-    (i.e. the distance exceeded the reliable simulation range for this hardware).
+    (i.e. the distance exceeded the speaker-calibration reliable range).
     """
     current_db     = rms_dbfs(audio)
     normalize_gain = 10.0 ** ((_NORM_DBFS - current_db) / 20.0)
 
     raw_gain    = calibration.ref_scale / max(float(distance_m), 1.0)
     was_clamped = raw_gain < MIN_PLAYBACK_GAIN
-    gain        = float(np.clip(raw_gain, MIN_PLAYBACK_GAIN, 1.0))
+    gain        = float(np.clip(raw_gain, 0.0, 1.0))
 
     output = (audio * normalize_gain * gain).astype(np.float32)
     sd.play(output, sr, blocking=True)
