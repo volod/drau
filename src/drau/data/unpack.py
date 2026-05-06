@@ -4,6 +4,8 @@ from pathlib import Path
 
 from datasets import Audio, load_from_disk
 
+from drau.settings.constants import FEATURE_ANALYTICS_PROGRESS_INTERVAL
+
 DRONE_SUBDIR     = "drone-audio"
 NON_DRONE_SUBDIR = "non-drone-audio"
 
@@ -43,7 +45,7 @@ def unpack_dataset(dataset_dir: Path, output_dir: Path, *, force: bool) -> Path:
         if not force and dest.exists():
             continue
         dest.write_bytes(row["audio"]["bytes"])
-        if (i + 1) % 10_000 == 0:
+        if (i + 1) % FEATURE_ANALYTICS_PROGRESS_INTERVAL == 0:
             print(f"  {i + 1}/{total} files written...")
 
     return output_dir

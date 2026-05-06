@@ -2,19 +2,29 @@
 
 import math
 
+from drau.settings.constants import (
+    GRADE_NICE_THRESHOLD_FINE,
+    GRADE_NICE_THRESHOLD_LARGE,
+    GRADE_NICE_THRESHOLD_MEDIUM,
+    GRADE_NICE_THRESHOLD_XLARGE,
+    GRADE_ZONE_FRACTION_B1,
+    GRADE_ZONE_FRACTION_B2,
+    GRADE_ZONE_FRACTION_B3,
+)
+
 
 def compute_grades(max_dist: float) -> list[tuple[float, float, str]]:
     """Return 4 distance zones scaled to the actual data range with round boundaries."""
     def _nice(v: float) -> int:
-        if v < 5:   return max(1, round(v))
-        if v < 20:  return round(v / 5)  * 5
-        if v < 100: return round(v / 10) * 10
-        if v < 500: return round(v / 25) * 25
-        return      round(v / 100) * 100
+        if v < GRADE_NICE_THRESHOLD_FINE:   return max(1, round(v))
+        if v < GRADE_NICE_THRESHOLD_MEDIUM: return round(v / 5)  * 5
+        if v < GRADE_NICE_THRESHOLD_LARGE:  return round(v / 10) * 10
+        if v < GRADE_NICE_THRESHOLD_XLARGE: return round(v / 25) * 25
+        return                                     round(v / 100) * 100
 
-    b1 = _nice(max_dist * 0.20)
-    b2 = _nice(max_dist * 0.33)
-    b3 = _nice(max_dist * 0.67)
+    b1 = _nice(max_dist * GRADE_ZONE_FRACTION_B1)
+    b2 = _nice(max_dist * GRADE_ZONE_FRACTION_B2)
+    b3 = _nice(max_dist * GRADE_ZONE_FRACTION_B3)
     b1 = max(b1, 1)
     b2 = max(b2, b1 + 1)
     b3 = max(b3, b2 + 1)

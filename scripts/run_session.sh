@@ -10,20 +10,16 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-if [[ -f ".env" ]]; then
-  # shellcheck disable=SC1091
-  source ".env"
-fi
+# shellcheck source=scripts/drau_lib.sh
+source scripts/drau_lib.sh
 
-if [[ ! -x ".venv/bin/python" ]]; then
-  echo "Error: .venv not found. Create it with: python3 -m venv .venv" >&2
-  exit 1
-fi
-
-".venv/bin/python" -m pip install -e . >/dev/null
+_require_env
+_require_venv
+_require_audio_data
+_install_package
 
 set +e
-".venv/bin/python" -m drau.detection_test "$@"
+"$REPO_ROOT/.venv/bin/python" -m drau.detection_test "$@"
 TEST_EXIT=$?
 set -e
 
@@ -31,12 +27,13 @@ if [[ "$TEST_EXIT" -ne 0 ]]; then
   exit "$TEST_EXIT"
 fi
 
-LATEST_CSV="$(ls -t ".data/detection-tests"/session_*.csv 2>/dev/null | head -1 || true)"
+OUTPUT_DIR="$DETECTION_OUTPUT_DIR"
+LATEST_CSV="$(ls -t "$REPO_ROOT/$OUTPUT_DIR"/session_*.csv 2>/dev/null | head -1 || true)"
 
 if [[ -z "$LATEST_CSV" ]]; then
-  echo "No session CSV found in .data/detection-tests/ — skipping analysis." >&2
+  echo "No session CSV found in $OUTPUT_DIR/ — skipping analysis." >&2
   exit 1
 fi
 
 echo ""
-".venv/bin/python" -m drau.analysis "$LATEST_CSV"
+"$REPO_ROOT/.venv/bin/python" -m drau.analysis "$LATEST_CSV"

@@ -4,15 +4,12 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-if [[ -f ".env" ]]; then
-  # shellcheck disable=SC1091
-  source ".env"
-fi
+# shellcheck source=scripts/drau_lib.sh
+source scripts/drau_lib.sh
 
-if [[ ! -x ".venv/bin/python" ]]; then
-  echo "Error: .venv not found. Create it with: python3 -m venv .venv" >&2
-  exit 1
-fi
+_require_env
+_require_venv
+_require_audio_data
+_install_package
 
-".venv/bin/python" -m pip install -e . >/dev/null
-".venv/bin/python" -m drau.detection_test "$@"
+"$REPO_ROOT/.venv/bin/python" -m drau.detection_test "$@"

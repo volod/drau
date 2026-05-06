@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never create git commits.
 - Never use `from __future__ import annotations`.
 - Never put Python files in `scripts/` and never embed inline Python inside shell scripts. All Python logic belongs in `src/drau/` (or a subpackage of it); shell scripts only invoke `python -m drau.<module>`.
+- Never use numbers in code and as default parameter values. Define constants or env variable values instead
 
 ## Setup
 

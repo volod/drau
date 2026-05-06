@@ -54,7 +54,7 @@ ifndef DIST_MAX
 	$(error DIST_MAX is required — usage: make run-session SAMPLES=20 MICS=2 DIST_MAX=30)
 endif
 	@bash scripts/run_session.sh --samples-num $(SAMPLES) --mic-num $(MICS) \
-	  --dist-max $(DIST_MAX) --audio-duration-min 2; \
+	  --dist-max $(DIST_MAX); \
 	 code=$$?; [ $$code -eq 130 ] && exit 0 || exit $$code
 
 analyse:

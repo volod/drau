@@ -8,8 +8,15 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from drau.analysis.metrics import metrics, safe
-
-_MIC_COLORS = ["#2ecc71", "#3498db", "#9b59b6", "#e74c3c", "#f39c12", "#1abc9c"]
+from drau.settings.constants import (
+    PLOT_CLASS_CAPTION_BOTTOM,
+    PLOT_CONFUSION_COLOR_THRESHOLD,
+    PLOT_DISTANCE_CAPTION_BOTTOM,
+    PLOT_DPI,
+    PLOT_GRID_ALPHA,
+    PLOT_MIC_COLORS,
+    PLOT_METRICS_YLIM_MAX,
+)
 
 
 def _style() -> None:
@@ -19,7 +26,7 @@ def _style() -> None:
         "axes.spines.right":False,
         "axes.grid":        True,
         "axes.grid.axis":   "y",
-        "grid.alpha":       0.3,
+        "grid.alpha":       PLOT_GRID_ALPHA,
         "figure.facecolor": "white",
     })
 
@@ -52,12 +59,12 @@ def _plot_confusion_matrices(plots_dir: Path, mic_cols: list[str], overall: dict
                     j, i,
                     f"{labels[i][j]}\n{int(mat[i, j])}",
                     ha="center", va="center", fontsize=13, fontweight="bold",
-                    color="white" if mat[i, j] > mat.max() * 0.55 else "black",
+                    color="white" if mat[i, j] > mat.max() * PLOT_CONFUSION_COLOR_THRESHOLD else "black",
                 )
 
     fig.suptitle("Confusion Matrices", fontsize=13, fontweight="bold")
     fig.tight_layout()
-    fig.savefig(plots_dir / "confusion_matrix.png", dpi=120, bbox_inches="tight")
+    fig.savefig(plots_dir / "confusion_matrix.png", dpi=PLOT_DPI, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -74,11 +81,11 @@ def _plot_metrics_overview(plots_dir: Path, mic_cols: list[str], overall: dict) 
         values = [safe(m[k]) for k in METRIC_KEYS]
         offset = (i - (n - 1) / 2) * width
         ax.bar(x + offset, values, width * 0.9,
-               label=mic, color=_MIC_COLORS[i % len(_MIC_COLORS)], alpha=0.85)
+               label=mic, color=PLOT_MIC_COLORS[i % len(PLOT_MIC_COLORS)], alpha=0.85)
 
     ax.set_xticks(x)
     ax.set_xticklabels(METRIC_LABELS, fontsize=11)
-    ax.set_ylim(0, 1.12)
+    ax.set_ylim(0, PLOT_METRICS_YLIM_MAX)
     ax.set_ylabel("Score", fontsize=11)
     ax.set_title("Detection Metrics Overview", fontsize=13, fontweight="bold")
     ax.axhline(1.0, color="gray", linestyle="--", linewidth=0.6, alpha=0.5)
@@ -91,7 +98,7 @@ def _plot_metrics_overview(plots_dir: Path, mic_cols: list[str], overall: dict) 
             ax.text(xi, v + 0.02, f"{v:.0%}", ha="center", va="bottom", fontsize=9)
 
     fig.tight_layout()
-    fig.savefig(plots_dir / "metrics_overview.png", dpi=120, bbox_inches="tight")
+    fig.savefig(plots_dir / "metrics_overview.png", dpi=PLOT_DPI, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -143,8 +150,8 @@ def _plot_by_distance(
     )
     fig.text(0.5, 0.01, caption, ha="center", va="bottom",
              fontsize=8, color="#555555", style="italic")
-    fig.tight_layout(rect=[0, 0.13, 1, 1])
-    fig.savefig(plots_dir / "performance_by_distance.png", dpi=120, bbox_inches="tight")
+    fig.tight_layout(rect=[0, PLOT_DISTANCE_CAPTION_BOTTOM, 1, 1])
+    fig.savefig(plots_dir / "performance_by_distance.png", dpi=PLOT_DPI, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -186,8 +193,8 @@ def _plot_by_class(plots_dir: Path, mic_cols: list[str], by_class: dict) -> None
         ax.set_title(f"{mic} — Performance by Sound Class", fontsize=11, fontweight="bold")
         ax.legend(fontsize=9)
 
-    fig.tight_layout(rect=[0, 0.02, 1, 1])
-    fig.savefig(plots_dir / "performance_by_class.png", dpi=120, bbox_inches="tight")
+    fig.tight_layout(rect=[0, PLOT_CLASS_CAPTION_BOTTOM, 1, 1])
+    fig.savefig(plots_dir / "performance_by_class.png", dpi=PLOT_DPI, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -198,9 +205,12 @@ def save_plots(
     by_grade: dict,
     by_class: dict,
     grades: list[tuple[float, float, str]],
+    subdir: str | None = None,
 ) -> Path:
     plots_dir = csv_path.parent / f"{csv_path.stem}_plots"
-    plots_dir.mkdir(exist_ok=True)
+    if subdir:
+        plots_dir = plots_dir / subdir
+    plots_dir.mkdir(parents=True, exist_ok=True)
     _style()
     _plot_confusion_matrices(plots_dir, mic_cols, overall)
     _plot_metrics_overview(plots_dir, mic_cols, overall)

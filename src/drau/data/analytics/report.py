@@ -6,9 +6,20 @@ from pathlib import Path
 
 from rich.console import Console
 
+from drau.settings.constants import REPORT_WIDTH_ANALYTICS
 from drau.data.analytics.store import query_eligible_counts
 
 REPORT_FILENAME = "analytics_report.txt"
+
+# Duration distribution buckets (seconds) used in the dataset overview report.
+_DURATION_BUCKETS_S: list[tuple[float, float]] = [
+    (0,  1),
+    (1,  2),
+    (2,  3),
+    (3,  5),
+    (5,  10),
+    (10, float("inf")),
+]
 
 
 def _col_vals(conn: sqlite3.Connection, label: str, col: str) -> list[float]:
@@ -32,10 +43,9 @@ def _fmt_stat(vals: list[float], unit: str = "", fmt: str = ".2f") -> str:
 
 
 def write_report(conn: sqlite3.Connection, report_path: Path, console: Console) -> None:
-    W = 72
     out: list[str] = []
     out.append("AUDIO DATASET ANALYTICS REPORT")
-    out.append("=" * W)
+    out.append("=" * REPORT_WIDTH_ANALYTICS)
 
     for label in ("drone", "non_drone"):
         total = conn.execute(
@@ -43,7 +53,7 @@ def write_report(conn: sqlite3.Connection, report_path: Path, console: Console) 
         ).fetchone()[0]
         heading = "DRONE" if label == "drone" else "NON-DRONE"
         out.append(f"\n{heading} FILES  ({total} total)")
-        out.append("-" * W)
+        out.append("-" * REPORT_WIDTH_ANALYTICS)
 
         for col, name, unit, fmt in [
             ("duration_s",            "Duration",             "s",     ".2f"),
@@ -62,10 +72,7 @@ def write_report(conn: sqlite3.Connection, report_path: Path, console: Console) 
             out.append(f"  {name:<28} {_fmt_stat(vals, unit, fmt)}")
 
         out.append("\n  Duration distribution:")
-        buckets: list[tuple[float, float]] = [
-            (0, 1), (1, 2), (2, 3), (3, 5), (5, 10), (10, float("inf"))
-        ]
-        for lo, hi in buckets:
+        for lo, hi in _DURATION_BUCKETS_S:
             if hi == float("inf"):
                 cnt = conn.execute(
                     "SELECT COUNT(*) FROM audio_files WHERE label=? AND duration_s>=?",
@@ -82,7 +89,7 @@ def write_report(conn: sqlite3.Connection, report_path: Path, console: Console) 
             pct = cnt / max(total, 1) * 100
             out.append(f"    {lbl:<8}  {cnt:>5}  {pct:5.1f}%  {'█' * int(pct / 2)}")
 
-    out.append("\n" + "=" * W)
+    out.append("\n" + "=" * REPORT_WIDTH_ANALYTICS)
     report_path.write_text("\n".join(out) + "\n", encoding="utf-8")
     console.print(f"Report → [cyan]{report_path}[/cyan]")
 

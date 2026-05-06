@@ -8,6 +8,8 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 
+from drau.settings.constants import FORM_MIN_DISTANCE_CHANGE_M
+
 
 def show_sample(
     console: Console,
@@ -103,6 +105,10 @@ def _show_review(
     console.print(Panel(body, title="[bold]Review[/bold]", border_style="dim"))
 
 
+def _distance_changed(new_dist: float, current: float) -> bool:
+    return new_dist is not None and abs(new_dist - current) >= FORM_MIN_DISTANCE_CHANGE_M
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def collect_results(
@@ -131,7 +137,7 @@ def collect_results(
                 continue
             if command == "distance":
                 new_dist = _ask_distance(console, current_distance)
-                if new_dist is not None and abs(new_dist - current_distance) >= 0.01:
+                if _distance_changed(new_dist, current_distance):
                     current_distance = new_dist
                     new_warning = _warning_text(current_distance, max_reliable_distance)
                     refresh_panel_fn(current_distance, new_warning)
@@ -173,7 +179,7 @@ def collect_results(
 
             elif action == "d":
                 new_dist = _ask_distance(console, current_distance)
-                if new_dist is not None and abs(new_dist - current_distance) >= 0.01:
+                if _distance_changed(new_dist, current_distance):
                     current_distance = new_dist
                     new_warning = _warning_text(current_distance, max_reliable_distance)
                     refresh_panel_fn(current_distance, new_warning)
@@ -188,7 +194,7 @@ def collect_results(
                         continue
                     if command == "distance":
                         new_dist = _ask_distance(console, current_distance)
-                        if new_dist is not None and abs(new_dist - current_distance) >= 0.01:
+                        if _distance_changed(new_dist, current_distance):
                             current_distance = new_dist
                             new_warning = _warning_text(current_distance, max_reliable_distance)
                             refresh_panel_fn(current_distance, new_warning)

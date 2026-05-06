@@ -7,14 +7,32 @@ from pathlib import Path
 
 from rich.console import Console
 
+from drau.settings.constants import (
+    PLAYBACK_REFERENCE_DISTANCE_M,
+    SPEAKER_LAPTOP_LF_WARNING_DISTANCE_M,
+    SPEAKER_TYPE_LAPTOP,
+)
 from drau.data.analytics import print_duration_stats, query_eligible_counts
 from drau.detection_test.calibrate import calibrate
 from drau.detection_test.form import collect_results, show_sample
-from drau.detection_test.player import load_audio, play_at_distance, rms_dbfs, stop_playback
+from drau.detection_test.player import load_audio, play_at_distance, rms_dbfs, stop_playback, trim_leading_silence
 from drau.detection_test.sampler import select_samples
-from drau.env import load_env
+from drau.settings.env import load_env
 
-_MAX_AUDIO_DURATION_S = 30.0
+
+def _sample_warning(
+    distance: float,
+    reliable_range: float,
+    speaker: str,
+) -> str | None:
+    if distance > reliable_range:
+        return f"⚠ beyond microphone range (≤ {reliable_range:.0f} m)"
+    if speaker == SPEAKER_TYPE_LAPTOP and distance > SPEAKER_LAPTOP_LF_WARNING_DISTANCE_M:
+        return (
+            f"⚠ laptop speaker: bass below ~200 Hz not reproduced "
+            f"(significant beyond {SPEAKER_LAPTOP_LF_WARNING_DISTANCE_M:.0f} m)"
+        )
+    return None
 
 
 def run(
@@ -23,8 +41,10 @@ def run(
     dist_max: float,
     audio_dir: Path,
     output_dir: Path,
-    min_duration_s: float | None = None,
-    reliable_range: float = 100.0,
+    min_duration_s: float | None,
+    reliable_range: float,
+    audio_duration_max_s: float,
+    mic_detect_max_m: float,
 ) -> int:
     repo_root = Path(__file__).resolve().parents[3]
     load_env(repo_root=repo_root)
@@ -58,6 +78,8 @@ def run(
     fieldnames  = [
         "session_id", "timestamp", "sample_num", "filename",
         "label", "distance_m", "rms_dbfs",
+        "speaker_type", "mic_type",
+        "mic_detect_max_m", "beyond_detect_max",
     ] + mic_columns
 
     samples_written = 0
@@ -67,12 +89,15 @@ def run(
             writer.writeheader()
 
             for idx, sample in enumerate(samples, 1):
-                distance   = rng.uniform(1.0, dist_max)
-                audio, sr  = load_audio(sample.path)
-                max_samples = int(sr * _MAX_AUDIO_DURATION_S)
+                distance    = rng.uniform(PLAYBACK_REFERENCE_DISTANCE_M, dist_max)
+                audio, sr   = load_audio(sample.path)
+                audio       = trim_leading_silence(audio)
+                max_samples = int(sr * audio_duration_max_s)
                 audio       = audio[:max_samples]
-                sample_rms = rms_dbfs(audio)
-                duration_s = len(audio) / sr
+                sample_rms  = rms_dbfs(audio)
+                duration_s  = len(audio) / sr
+
+                warning = _sample_warning(distance, reliable_range, calibration.hardware.speaker)
 
                 def _replay(d: float, _a=audio, _s=sr) -> bool:
                     return play_at_distance(_a, _s, d, calibration)
@@ -88,13 +113,6 @@ def run(
                         sample.path.name,
                         duration_s=duration_s,
                         warning=w,
-                    )
-
-                warning = None
-                if distance > reliable_range:
-                    warning = (
-                        f"⚠ beyond microphone range "
-                        f"(≤ {reliable_range:.0f} m)"
                     )
 
                 console.clear()
@@ -121,13 +139,17 @@ def run(
                 )
 
                 row: dict = {
-                    "session_id": session_id,
-                    "timestamp":  datetime.now().isoformat(),
-                    "sample_num": idx,
-                    "filename":   sample.path.name,
-                    "label":      sample.label,
-                    "distance_m": round(final_distance, 2),
-                    "rms_dbfs":   round(sample_rms, 2),
+                    "session_id":        session_id,
+                    "timestamp":         datetime.now().isoformat(),
+                    "sample_num":        idx,
+                    "filename":          sample.path.name,
+                    "label":             sample.label,
+                    "distance_m":        round(final_distance, 2),
+                    "rms_dbfs":          round(sample_rms, 2),
+                    "speaker_type":      calibration.hardware.speaker,
+                    "mic_type":          calibration.hardware.mic,
+                    "mic_detect_max_m":  mic_detect_max_m,
+                    "beyond_detect_max": str(final_distance > mic_detect_max_m).lower(),
                 }
                 for i, result in enumerate(mic_results, 1):
                     row[f"mic_{i}"] = result

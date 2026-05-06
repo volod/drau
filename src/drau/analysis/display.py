@@ -8,11 +8,10 @@ from rich.panel import Panel
 from rich.table import Table
 
 from drau.analysis.metrics import fmt, metrics, safe
+from drau.settings.constants import DISPLAY_BAR_WIDTH
 
-_BAR_WIDTH = 22
 
-
-def _bar(v: float, width: int = _BAR_WIDTH) -> str:
+def _bar(v: float, width: int = DISPLAY_BAR_WIDTH) -> str:
     if math.isnan(v):
         return "░" * width + "   —   "
     filled = round(max(0.0, min(1.0, v)) * width)

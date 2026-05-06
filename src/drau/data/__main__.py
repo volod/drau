@@ -9,10 +9,14 @@ from rich.console import Console
 from drau.data.analytics import run_analytics
 from drau.data.cache import cache_dataset
 from drau.data.unpack import unpack_dataset
-from drau.env import get_settings, load_env
+from drau.settings.env import get_settings, load_env
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    repo_root = Path(__file__).resolve().parents[3]
+    load_env(repo_root=repo_root)
+    settings = get_settings()
+
     parser = argparse.ArgumentParser(
         prog="drau-data",
         description=(
@@ -22,12 +26,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--cache-dir",
-        default=".data/drone-audio-detection-samples",
+        default=settings.data_cache_dir,
         help="Target directory for cached Arrow dataset (default: %(default)s).",
     )
     parser.add_argument(
         "--audio-dir",
-        default=".data/drone-audio-detection-samples/audio",
+        default=settings.data_audio_dir,
         help="Output directory for unpacked WAV files (default: %(default)s).",
     )
     parser.add_argument(

@@ -7,11 +7,15 @@ from pathlib import Path
 
 import numpy as np
 
-_ANALYSIS_SECONDS       = 5
-_FRAME_SAMPLES          = 512
-_SILENCE_THRESHOLD_DBFS = -40.0
-_LOW_HZ                 = 500
-_HIGH_HZ                = 4_000
+from drau.settings.constants import (
+    FEATURE_ANALYSIS_WINDOW_S,
+    FEATURE_FRAME_SAMPLES,
+    FEATURE_SILENCE_THRESHOLD_DBFS,
+    FEATURE_SPECTRAL_HIGH_HZ,
+    FEATURE_SPECTRAL_LOW_HZ,
+    FEATURE_SPECTRAL_ROLLOFF_FRACTION,
+    LOG_EPSILON,
+)
 
 
 @dataclass
@@ -50,11 +54,11 @@ def analyse_file(path: Path, label: str) -> AudioFeatures:
     n = len(audio)
 
     rms64     = float(np.sqrt(np.mean(audio.astype(np.float64) ** 2)))
-    rms_dbfs  = 20.0 * math.log10(max(rms64, 1e-10))
-    peak_dbfs = 20.0 * math.log10(max(float(np.abs(audio).max()), 1e-10))
+    rms_dbfs  = 20.0 * math.log10(max(rms64, LOG_EPSILON))
+    peak_dbfs = 20.0 * math.log10(max(float(np.abs(audio).max()), LOG_EPSILON))
     zcr       = float(np.mean(np.abs(np.diff(np.sign(audio))) / 2))
 
-    win_n    = min(n, sr * _ANALYSIS_SECONDS)
+    win_n    = min(n, sr * FEATURE_ANALYSIS_WINDOW_S)
     chunk    = audio[:win_n].astype(np.float64)
     spectrum = np.abs(np.fft.rfft(chunk * np.hanning(win_n)))
     freqs    = np.fft.rfftfreq(win_n, 1.0 / sr)
@@ -65,20 +69,20 @@ def analyse_file(path: Path, label: str) -> AudioFeatures:
         cent = float((freqs * power).sum() / total_p)
         bw   = float(np.sqrt((power * (freqs - cent) ** 2).sum() / total_p))
         cum  = np.cumsum(power)
-        ri   = min(int(np.searchsorted(cum, 0.85 * total_p)), len(freqs) - 1)
+        ri   = min(int(np.searchsorted(cum, FEATURE_SPECTRAL_ROLLOFF_FRACTION * total_p)), len(freqs) - 1)
         roll = float(freqs[ri])
-        e_lo = float(power[freqs < _LOW_HZ].sum()                           / total_p)
-        e_mi = float(power[(freqs >= _LOW_HZ) & (freqs < _HIGH_HZ)].sum()  / total_p)
-        e_hi = float(power[freqs >= _HIGH_HZ].sum()                         / total_p)
+        e_lo = float(power[freqs < FEATURE_SPECTRAL_LOW_HZ].sum()                                          / total_p)
+        e_mi = float(power[(freqs >= FEATURE_SPECTRAL_LOW_HZ) & (freqs < FEATURE_SPECTRAL_HIGH_HZ)].sum() / total_p)
+        e_hi = float(power[freqs >= FEATURE_SPECTRAL_HIGH_HZ].sum()                                        / total_p)
     else:
         cent = bw = roll = e_lo = e_mi = e_hi = 0.0
 
-    n_frames = n // _FRAME_SAMPLES
+    silence_thresh = 10.0 ** (FEATURE_SILENCE_THRESHOLD_DBFS / 20.0)
+    n_frames = n // FEATURE_FRAME_SAMPLES
     if n_frames > 0:
-        frames    = audio[:n_frames * _FRAME_SAMPLES].reshape(n_frames, _FRAME_SAMPLES)
+        frames    = audio[:n_frames * FEATURE_FRAME_SAMPLES].reshape(n_frames, FEATURE_FRAME_SAMPLES)
         frame_rms = np.sqrt(np.mean(frames.astype(np.float64) ** 2, axis=1))
-        thresh    = 10.0 ** (_SILENCE_THRESHOLD_DBFS / 20.0)
-        sil_ratio = float((frame_rms < thresh).mean())
+        sil_ratio = float((frame_rms < silence_thresh).mean())
     else:
         sil_ratio = 0.0
 
