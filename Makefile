@@ -15,6 +15,7 @@ help:
 	@printf "  %-22s %s\n" "cache-data"  "Download and unpack drone audio dataset (~6.6 GB)"
 	@printf "  %-22s %s\n" "run-session" "Run detection test then auto-analyse results"
 	@printf "  %-22s %s\n" ""            "  Required: SAMPLES=<n>  MICS=<n>  DIST_MAX=<m>"
+	@printf "  %-22s %s\n" ""            "  Optional: PLAY_SAMPLE=1  (play-only, no MICS needed)"
 	@printf "  %-22s %s\n" "analyse"     "Analyse a session CSV"
 	@printf "  %-22s %s\n" ""            "  Required: CSV=<path>"
 	@printf "\nExamples:\n"
@@ -47,15 +48,22 @@ run-session:
 ifndef SAMPLES
 	$(error SAMPLES is required — usage: make run-session SAMPLES=20 MICS=2 DIST_MAX=30)
 endif
-ifndef MICS
-	$(error MICS is required — usage: make run-session SAMPLES=20 MICS=2 DIST_MAX=30)
-endif
 ifndef DIST_MAX
 	$(error DIST_MAX is required — usage: make run-session SAMPLES=20 MICS=2 DIST_MAX=30)
 endif
+ifndef PLAY_SAMPLE
+ifndef MICS
+	$(error MICS is required — usage: make run-session SAMPLES=20 MICS=2 DIST_MAX=30)
+endif
+endif
+ifdef PLAY_SAMPLE
+	@bash scripts/run_session.sh --samples-num $(SAMPLES) --dist-max $(DIST_MAX) --play-only; \
+	 code=$$?; [ $$code -eq 130 ] && exit 0 || exit $$code
+else
 	@bash scripts/run_session.sh --samples-num $(SAMPLES) --mic-num $(MICS) \
 	  --dist-max $(DIST_MAX); \
 	 code=$$?; [ $$code -eq 130 ] && exit 0 || exit $$code
+endif
 
 analyse:
 ifndef CSV

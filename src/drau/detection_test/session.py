@@ -35,6 +35,74 @@ def _sample_warning(
     return None
 
 
+def play_samples(
+    samples_num: int,
+    dist_max: float,
+    audio_dir: Path,
+    min_duration_s: float | None,
+    reliable_range: float,
+    audio_duration_max_s: float,
+) -> int:
+    repo_root = Path(__file__).resolve().parents[3]
+    load_env(repo_root=repo_root)
+
+    console = Console()
+    rng     = random.Random()
+
+    if min_duration_s is not None:
+        counts = query_eligible_counts(audio_dir, min_duration_s)
+        total_eligible = counts["drone_eligible"] + counts["non_drone_eligible"]
+        if total_eligible < samples_num * 0.5:
+            console.print(
+                f"\n[bold red]Insufficient eligible samples.[/bold red] "
+                f"Only [cyan]{total_eligible}[/cyan] file(s) are ≥ [cyan]{min_duration_s:.1f}s[/cyan], "
+                f"which is less than 50 % of the [cyan]{samples_num}[/cyan] requested.\n"
+                f"Run [bold]make cache-data[/bold] to analyse the dataset, "
+                f"or lower [bold]--audio-duration-min[/bold]."
+            )
+            print_duration_stats(audio_dir, min_duration_s, console)
+            return 1
+
+    calibration = calibrate(console)
+
+    console.print(f"Selecting {samples_num} samples (50 % drone / 50 % non-drone)…")
+    samples = select_samples(audio_dir, samples_num, rng, min_duration_s=min_duration_s)
+
+    try:
+        for idx, sample in enumerate(samples, 1):
+            distance    = rng.uniform(PLAYBACK_REFERENCE_DISTANCE_M, dist_max)
+            audio, sr   = load_audio(sample.path)
+            audio       = trim_leading_silence(audio)
+            max_samples = int(sr * audio_duration_max_s)
+            audio       = audio[:max_samples]
+            duration_s  = len(audio) / sr
+
+            warning = _sample_warning(distance, reliable_range, calibration.hardware.speaker)
+
+            console.clear()
+            show_sample(
+                console,
+                idx,
+                len(samples),
+                sample.label,
+                distance,
+                sample.path.name,
+                duration_s=duration_s,
+                warning=warning,
+            )
+
+            play_at_distance(audio, sr, distance, calibration)
+
+    except KeyboardInterrupt:
+        stop_playback()
+        print()
+        console.print("[yellow]Playback interrupted.[/yellow]")
+        return 130
+
+    console.print("\n[bold green]Playback complete.[/bold green]")
+    return 0
+
+
 def run(
     samples_num: int,
     mic_num: int,

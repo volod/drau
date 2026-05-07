@@ -14,6 +14,12 @@ if [[ "${1:-}" == "--recreate" ]]; then
     RECREATE=true
 fi
 
+# ── System dependencies ───────────────────────────────────────────────────────
+if ! ldconfig -p 2>/dev/null | grep -q libportaudio; then
+    echo "Installing system dependency: libportaudio2..."
+    sudo apt-get install -y libportaudio2
+fi
+
 # ── Python version check ──────────────────────────────────────────────────────
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Error: python3 not found." >&2; exit 1

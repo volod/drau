@@ -18,6 +18,11 @@ _require_venv
 _require_audio_data
 _install_package
 
+PLAY_ONLY=false
+for arg in "$@"; do
+  [[ "$arg" == "--play-only" ]] && PLAY_ONLY=true && break
+done
+
 set +e
 "$REPO_ROOT/.venv/bin/python" -m drau.detection_test "$@"
 TEST_EXIT=$?
@@ -25,6 +30,10 @@ set -e
 
 if [[ "$TEST_EXIT" -ne 0 ]]; then
   exit "$TEST_EXIT"
+fi
+
+if [[ "$PLAY_ONLY" == "true" ]]; then
+  exit 0
 fi
 
 OUTPUT_DIR="$DETECTION_OUTPUT_DIR"

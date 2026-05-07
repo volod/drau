@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from drau.detection_test.session import run
+from drau.detection_test.session import play_samples, run
 from drau.settings.env import get_settings, load_env
 
 
@@ -23,6 +23,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Number of external microphone systems under test.")
     parser.add_argument("--dist-max", type=float, default=None,
                         help="Maximum simulated drone distance in metres.")
+    parser.add_argument("--play-only", action="store_true",
+                        help="Play samples continuously without collecting detection results.")
     parser.add_argument("--audio-dir",
                         default=settings.detection_audio_dir,
                         help="Parent dir with drone-audio/ and non-drone-audio/ (default: %(default)s).")
@@ -48,11 +50,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
 
-    missing = [flag for flag, val in [
-        ("--samples-num", args.samples_num),
-        ("--mic-num",     args.mic_num),
-        ("--dist-max",    args.dist_max),
-    ] if val is None]
+    required = [("--samples-num", args.samples_num), ("--dist-max", args.dist_max)]
+    if not args.play_only:
+        required.append(("--mic-num", args.mic_num))
+    missing = [flag for flag, val in required if val is None]
     if missing:
         parser.error(f"the following arguments are required: {', '.join(missing)}")
 
@@ -61,14 +62,24 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = _parse_args()
-    sys.exit(run(
-        samples_num=args.samples_num,
-        mic_num=args.mic_num,
-        dist_max=args.dist_max,
-        audio_dir=Path(args.audio_dir),
-        output_dir=Path(args.output_dir),
-        min_duration_s=args.audio_duration_min,
-        reliable_range=args.reliable_range,
-        audio_duration_max_s=args.audio_duration_max,
-        mic_detect_max_m=args.mic_detect_max,
-    ))
+    if args.play_only:
+        sys.exit(play_samples(
+            samples_num=args.samples_num,
+            dist_max=args.dist_max,
+            audio_dir=Path(args.audio_dir),
+            min_duration_s=args.audio_duration_min,
+            reliable_range=args.reliable_range,
+            audio_duration_max_s=args.audio_duration_max,
+        ))
+    else:
+        sys.exit(run(
+            samples_num=args.samples_num,
+            mic_num=args.mic_num,
+            dist_max=args.dist_max,
+            audio_dir=Path(args.audio_dir),
+            output_dir=Path(args.output_dir),
+            min_duration_s=args.audio_duration_min,
+            reliable_range=args.reliable_range,
+            audio_duration_max_s=args.audio_duration_max,
+            mic_detect_max_m=args.mic_detect_max,
+        ))

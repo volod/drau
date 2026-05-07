@@ -7,7 +7,7 @@ cd "$REPO_ROOT"
 # shellcheck source=scripts/drau_lib.sh
 source scripts/drau_lib.sh
 
-_load_env
+_require_env
 _require_venv
 _install_package
 
